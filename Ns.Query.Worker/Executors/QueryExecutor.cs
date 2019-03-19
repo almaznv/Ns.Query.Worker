@@ -97,39 +97,46 @@ namespace Ns.BpmOnline.Worker.Executors
                 var watch = System.Diagnostics.Stopwatch.StartNew();
 
                 ExecuteQuery(receivedQuery.Query, receivedQuery.ID, receivedQuery.ResultTable, receivedQuery.ResultColumn, 
-                (int affected) => {
-
+                (int affected, string errText) => {
                     watch.Stop();
+                    if (affected >= 0)
+                    {
+                        SendAnswerSuccess(receivedQuery, affected, receivedQuery.ResultTable, (int)watch.ElapsedMilliseconds/1000, String.Format("Success affected rows: {0}", affected.ToString()));
 
-                    SendAnswerSuccess(receivedQuery, affected, receivedQuery.ResultTable, (int)watch.ElapsedMilliseconds/1000, String.Format("Success affected rows: {0}", affected.ToString()));
+                        Logger.Log(String.Format("Sent answer to {0} query. Success affected rows: {1}", receivedQuery.ID, affected.ToString()));
+                        tcs.SetResult(1);
+                    } else if (affected <0)
+                    {
+                        SendAnswerError(receivedQuery, errText);
+                        tcs.SetResult(-1);
+                    }
 
-                    Logger.Log(String.Format("Sent answer to {0} query. Success affected rows: {1}", receivedQuery.ID, affected.ToString()));
-                    tcs.SetResult(1);
 
-                }, (Exception e) =>
-                {
-                    tcs.SetException(e);
                 });
             });
             return tcs.Task;
         }
 
-        private void ExecuteQuery(string sqlQuery, string Id, string ResultTable, string ResultColumn, Action<int> SuccessCallback, Action<Exception> ErrorCallback)
+        private void ExecuteQuery(string sqlQuery, string Id, string ResultTable, string ResultColumn, Action<int, string> Callback)
         {
+            int count;
+            string errText;
+
             try
             {
-                    var count = ExecuteTspWithoutResult(sqlQuery, Id);
+                (count, errText) = ExecuteTspWithoutResult(sqlQuery, Id);
 
-                    SuccessCallback(count);
-                
+                Callback(count, errText);
+
             } catch (Exception e) {
-                ErrorCallback(e);
+                Callback(-1, e.Message);
             }
         }
 
-        private int ExecuteTspWithoutResult(string sqlQuery, string Id)
+        private (int, string) ExecuteTspWithoutResult(string sqlQuery, string Id)
         {
             int returnValue = 0;
+            string errText = "s";
 
             using (SqlConnection connection = new SqlConnection(sqlConnectionString))
             using (SqlCommand cmd = new SqlCommand("tsp_NsPerformQueryWithoutResult", connection))
@@ -139,6 +146,8 @@ namespace Ns.BpmOnline.Worker.Executors
 
                 SqlParameter countParam = new SqlParameter("@affected", SqlDbType.Int) { Direction = ParameterDirection.Output };                cmd.Parameters.Add(countParam);
 
+                SqlParameter errTextParam = new SqlParameter("@err", SqlDbType.NVarChar) { Direction = ParameterDirection.Output, Size= 4000 };
+                cmd.Parameters.Add(errTextParam);
 
                 connection.Open();
 
@@ -146,10 +155,12 @@ namespace Ns.BpmOnline.Worker.Executors
 
                 returnValue = countParam.Value as int? ?? default(int);
 
+                errText = (string)errTextParam.Value;
+
                 connection.Close();
             }
 
-            return returnValue;
+            return (returnValue, errText);
         }
 
         private int ExecuteTspWithResult(string sqlQuery, string Id, string ResultTable, string ResultColumn)
