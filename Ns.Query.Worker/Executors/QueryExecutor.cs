@@ -151,6 +151,7 @@ namespace Ns.BpmOnline.Worker.Executors
 
                 connection.Open();
 
+                cmd.CommandTimeout = 300;
                 cmd.ExecuteNonQuery();
 
                 returnValue = countParam.Value as int? ?? default(int);
