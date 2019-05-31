@@ -28,3 +28,21 @@ BEGIN
 END
 GO
 
+Добавление нужных полей если их нет
+IF COL_LENGTH('NsResultTable', 'QueryId') IS NULL
+BEGIN
+    ALTER TABLE [NsResultTable]
+    ADD [QueryId] UNIQUEIDENTIFIER
+END
+
+IF COL_LENGTH('NsResultTable', 'DebtId') IS NULL
+BEGIN
+    ALTER TABLE [NsResultTable]
+    ADD DebtId UNIQUEIDENTIFIER
+END
+
+IF COL_LENGTH('NsResultTable', 'ClientId') IS NULL
+BEGIN
+    ALTER TABLE [NsResultTable]
+    ADD ClientId UNIQUEIDENTIFIER
+END
