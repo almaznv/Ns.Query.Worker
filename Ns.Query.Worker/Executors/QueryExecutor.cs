@@ -131,7 +131,7 @@ namespace Ns.BpmOnline.Worker.Executors
                 (count, errText) = ExecuteTspWithoutResult(receivedQuery.Query, receivedQuery.ID);
                 if (receivedQuery.IsNeedResult)
                 {
-                    InsertResultToRedis(receivedQuery.ID, receivedQuery.ResultTable);
+                    InsertResultToRedis(receivedQuery.ID, receivedQuery.ResultColumn, receivedQuery.ResultTable);
                 }
 
                 Callback(count, errText);
@@ -174,10 +174,9 @@ namespace Ns.BpmOnline.Worker.Executors
             return (returnValue, errText);
         }
 
-        private void InsertResultToRedis(string Id, string ResultTable)
+        private void InsertResultToRedis(string Id, string resultColumn, string resultTable)
         {
-            int i = 0;
-            var commandText = $"SELECT [DebtId], [ClientId] FROM {ResultTable} WHERE QueryId = '{Id}'";
+            var commandText = $"SELECT {resultColumn} FROM {resultTable} WHERE QueryId = '{Id}'";
 
             SqlConnection conn = new SqlConnection(sqlConnectionString);
             using (SqlCommand cmd = new SqlCommand(commandText, conn))
@@ -187,47 +186,36 @@ namespace Ns.BpmOnline.Worker.Executors
 
                 using (SqlDataReader reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
                 {
-                    var watch = System.Diagnostics.Stopwatch.StartNew();
-                    
-                    var settings = RedisSettings.Build()
-                      .Host("localhost")
-                      .Port(6379);
 
-                    var client = new RedisClient(settings);
-
-                    int dbIndex = 16;
-                    client.Select(dbIndex);
+                    var cols = new List<string>();
+                    for (var j = 0; j < reader.FieldCount; j++)
+                    {
+                        cols.Add(reader.GetName(j));
+                    }
+                    var client = NsRedisHelper.getRedisClient();
 
                     var key = $"nsResult_{Id}";
                     client.Multi();
 
                     while (reader.Read())
                     {
-                        var DebtId = reader["DebtId"].ToString();
-                        var ClientId = reader["ClientId"].ToString();
-
-                        string jsonStr = JsonConvert.SerializeObject(new NsQueryResult() { DebtId = DebtId, ClientId = ClientId, Queryid = Id });
+                        string jsonStr = JsonConvert.SerializeObject(SerializeRow(cols, reader), Formatting.Indented);
                         client.LPush(key, jsonStr);
-                        i++;
                     }
                     client.Exec();
                     client.Dispose();
-
-                    watch.Stop();
-                    var elapsedMs = watch.ElapsedMilliseconds;
-
-                    System.Diagnostics.Debug.WriteLine($"time:{elapsedMs}");
                 }
 
             }
- 
+
         }
 
-        protected class NsQueryResult
+        private Dictionary<string, object> SerializeRow(IEnumerable<string> cols, SqlDataReader reader)
         {
-            public string DebtId { get; set; }
-            public string ClientId { get; set; }
-            public string Queryid { get; set; }
+            var result = new Dictionary<string, object>();
+            foreach (var col in cols)
+                result.Add(col, reader[col]);
+            return result;
         }
     }
 }

@@ -83,6 +83,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BpmConnector.cs" />
+    <Compile Include="NsRedisHelper.cs" />
     <Compile Include="CommandConsumer.cs" />
     <Compile Include="Executors\Executor.cs" />
     <Compile Include="Executors\IExecutor.cs" />
