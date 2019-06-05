@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using System.Data;
 using System.Data.SqlClient;
 using System.Threading;
+using Sider;
 
 namespace Ns.BpmOnline.Worker.Executors
 {
@@ -42,7 +43,8 @@ namespace Ns.BpmOnline.Worker.Executors
             {
                 Task<int> task = RunExecuteQueryAsync(receivedQuery);
                 int result = task.Result;
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 Logger.Log(String.Format("Error query: {0}", e.Message));
                 SendAnswerError(receivedQuery, e.Message);
@@ -96,16 +98,18 @@ namespace Ns.BpmOnline.Worker.Executors
             {
                 var watch = System.Diagnostics.Stopwatch.StartNew();
 
-                ExecuteQuery(receivedQuery.Query, receivedQuery.ID, receivedQuery.ResultTable, receivedQuery.ResultColumn, 
-                (int affected, string errText) => {
+                ExecuteQuery(receivedQuery,
+                (int affected, string errText) =>
+                {
                     watch.Stop();
                     if (affected >= 0)
                     {
-                        SendAnswerSuccess(receivedQuery, affected, receivedQuery.ResultTable, (int)watch.ElapsedMilliseconds/1000, String.Format("Success affected rows: {0}", affected.ToString()));
+                        SendAnswerSuccess(receivedQuery, affected, receivedQuery.ResultTable, (int)watch.ElapsedMilliseconds / 1000, String.Format("Success affected rows: {0}", affected.ToString()));
 
                         Logger.Log(String.Format("Sent answer to {0} query. Success affected rows: {1}", receivedQuery.ID, affected.ToString()));
                         tcs.SetResult(1);
-                    } else if (affected <0)
+                    }
+                    else if (affected < 0)
                     {
                         SendAnswerError(receivedQuery, errText);
                         tcs.SetResult(-1);
@@ -117,18 +121,24 @@ namespace Ns.BpmOnline.Worker.Executors
             return tcs.Task;
         }
 
-        private void ExecuteQuery(string sqlQuery, string Id, string ResultTable, string ResultColumn, Action<int, string> Callback)
+        private void ExecuteQuery(NsReceivedQuery receivedQuery, Action<int, string> Callback)
         {
             int count;
             string errText;
 
             try
             {
-                (count, errText) = ExecuteTspWithoutResult(sqlQuery, Id);
+                (count, errText) = ExecuteTspWithoutResult(receivedQuery.Query, receivedQuery.ID);
+                if (receivedQuery.IsNeedResult)
+                {
+                    InsertResultToRedis(receivedQuery.ID, receivedQuery.ResultColumn, receivedQuery.ResultTable);
+                }
 
                 Callback(count, errText);
 
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 Callback(-1, e.Message);
             }
         }
@@ -146,7 +156,7 @@ namespace Ns.BpmOnline.Worker.Executors
 
                 SqlParameter countParam = new SqlParameter("@affected", SqlDbType.Int) { Direction = ParameterDirection.Output };                cmd.Parameters.Add(countParam);
 
-                SqlParameter errTextParam = new SqlParameter("@err", SqlDbType.NVarChar) { Direction = ParameterDirection.Output, Size= 4000 };
+                SqlParameter errTextParam = new SqlParameter("@err", SqlDbType.NVarChar) { Direction = ParameterDirection.Output, Size = 4000 };
                 cmd.Parameters.Add(errTextParam);
 
                 connection.Open();
@@ -164,32 +174,48 @@ namespace Ns.BpmOnline.Worker.Executors
             return (returnValue, errText);
         }
 
-        private int ExecuteTspWithResult(string sqlQuery, string Id, string ResultTable, string ResultColumn)
+        private void InsertResultToRedis(string Id, string resultColumn, string resultTable)
         {
-            int i = 0;
+            var commandText = $"SELECT {resultColumn} FROM {resultTable} WHERE QueryId = '{Id}'";
 
-            using (SqlConnection connection = new SqlConnection(sqlConnectionString))
-            using (SqlCommand cmd = new SqlCommand("tsp_NsPerformQueryWithResult", connection))
+            SqlConnection conn = new SqlConnection(sqlConnectionString);
+            using (SqlCommand cmd = new SqlCommand(commandText, conn))
             {
-                cmd.CommandType = CommandType.StoredProcedure;                cmd.Parameters.Add(new SqlParameter("@sqlQuery", sqlQuery));
-                cmd.Parameters.Add(new SqlParameter("@queryId", Id));
-                cmd.Parameters.Add(new SqlParameter("@resultTable", ResultTable));
-                cmd.Parameters.Add(new SqlParameter("@resultColumn", ResultColumn));
+                cmd.CommandType = CommandType.Text;
+                conn.Open();
 
-
-                connection.Open();
-                using (SqlDataReader reader = cmd.ExecuteReader())
+                using (SqlDataReader reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
                 {
-                    
-                    // Read advances to the next row.
-                    while (reader.Read()) i++;
 
+                    var cols = new List<string>();
+                    for (var j = 0; j < reader.FieldCount; j++)
+                    {
+                        cols.Add(reader.GetName(j));
+                    }
+                    var client = NsRedisHelper.getRedisClient();
+
+                    var key = $"nsResult_{Id}";
+                    client.Multi();
+
+                    while (reader.Read())
+                    {
+                        string jsonStr = JsonConvert.SerializeObject(SerializeRow(cols, reader), Formatting.Indented);
+                        client.LPush(key, jsonStr);
+                    }
+                    client.Exec();
+                    client.Dispose();
                 }
 
-                connection.Close();
             }
 
-            return i;
+        }
+
+        private Dictionary<string, object> SerializeRow(IEnumerable<string> cols, SqlDataReader reader)
+        {
+            var result = new Dictionary<string, object>();
+            foreach (var col in cols)
+                result.Add(col, reader[col]);
+            return result;
         }
     }
 }
