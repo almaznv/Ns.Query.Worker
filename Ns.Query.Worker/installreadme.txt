@@ -46,3 +46,39 @@ BEGIN
     ALTER TABLE [NsResultTable]
     ADD ClientId UNIQUEIDENTIFIER
 END
+
+IF COL_LENGTH('NsActionTable', 'QuantityPerMinute') IS NULL
+BEGIN
+    ALTER TABLE [NsActionTable]
+    ADD QuantityPerMinute INT
+END
+
+IF COL_LENGTH('NsActionTable', 'IsCheckPDS') IS NULL
+BEGIN
+    ALTER TABLE [NsActionTable]
+    ADD IsCheckPDS BIT
+END
+
+IF COL_LENGTH('NsActionTable', 'UseTimeZone') IS NULL
+BEGIN
+    ALTER TABLE [NsActionTable]
+    ADD UseTimeZone BIT
+END
+
+IF COL_LENGTH('NsActionTable', 'IsSuccess90day') IS NULL
+BEGIN
+    ALTER TABLE [NsActionTable]
+    ADD IsSuccess90day BIT
+END
+
+IF COL_LENGTH('NsActionTable', 'IsOnNextDay') IS NULL
+BEGIN
+    ALTER TABLE [NsActionTable]
+    ADD IsOnNextDay BIT
+END
+
+IF COL_LENGTH('NsActionTable', 'IsAccordingLaw') IS NULL
+BEGIN
+    ALTER TABLE [NsActionTable]
+    ADD IsAccordingLaw BIT
+END
