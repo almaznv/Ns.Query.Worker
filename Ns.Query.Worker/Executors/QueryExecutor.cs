@@ -131,7 +131,7 @@ namespace Ns.BpmOnline.Worker.Executors
                 (count, errText) = ExecuteTspWithoutResult(receivedQuery.Query, receivedQuery.ID);
                 if (receivedQuery.IsNeedResult)
                 {
-                    InsertResultToRedis(receivedQuery.ID, receivedQuery.ResultColumn, receivedQuery.ResultTable);
+                    InsertResultToRedis(receivedQuery);
                 }
 
                 Callback(count, errText);
@@ -174,9 +174,11 @@ namespace Ns.BpmOnline.Worker.Executors
             return (returnValue, errText);
         }
 
-        private void InsertResultToRedis(string Id, string resultColumn, string resultTable)
+        private void InsertResultToRedis(NsReceivedQuery receivedQuery)
         {
-            var commandText = $"SELECT {resultColumn} FROM {resultTable} WHERE QueryId = '{Id}'";
+            var commandText = (!receivedQuery.UseQueryInResult)
+                ? $"SELECT {receivedQuery.ResultColumn} FROM {receivedQuery.ResultTable} WHERE QueryId = '{receivedQuery.ID}'"
+                : receivedQuery.Query;
 
             SqlConnection conn = new SqlConnection(sqlConnectionString);
             using (SqlCommand cmd = new SqlCommand(commandText, conn))
@@ -194,7 +196,7 @@ namespace Ns.BpmOnline.Worker.Executors
                     }
                     var client = NsRedisHelper.getRedisClient();
 
-                    var key = $"nsResult_{Id}";
+                    var key = $"nsResult_{receivedQuery.ID}";
                     client.Multi();
 
                     while (reader.Read())

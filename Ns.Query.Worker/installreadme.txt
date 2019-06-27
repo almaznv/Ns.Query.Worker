@@ -38,13 +38,13 @@ END
 IF COL_LENGTH('NsResultTable', 'DebtId') IS NULL
 BEGIN
     ALTER TABLE [NsResultTable]
-    ADD DebtId UNIQUEIDENTIFIER
+    ADD DebtId INT
 END
 
 IF COL_LENGTH('NsResultTable', 'ClientId') IS NULL
 BEGIN
     ALTER TABLE [NsResultTable]
-    ADD ClientId UNIQUEIDENTIFIER
+    ADD ClientId INT
 END
 
 IF COL_LENGTH('NsActionTable', 'QuantityPerMinute') IS NULL
@@ -82,3 +82,5 @@ BEGIN
     ALTER TABLE [NsActionTable]
     ADD IsAccordingLaw BIT
 END
+
+CREATE TABLE [dbo].[NsActionEvent]( [Id] [uniqueidentifier] NOT NULL, [CreatedOn] [datetime2](7) NOT NULL, [EventCode] [int] NOT NULL, [ClientId] [int] NULL, [DebtId] [int] NULL, [PristavDebtId] [int] NULL, [IsHandled] [bit] NOT NULL) ON [PRIMARY]

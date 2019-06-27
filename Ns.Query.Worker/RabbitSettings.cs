@@ -39,6 +39,7 @@ namespace Ns.BpmOnline.Worker
         public string Query { get; set; }
         public string ID { get; set; }
         public bool IsNeedResult { get; set; }
+        public bool UseQueryInResult { get; set; }
         public string ResultTable { get; set; }
         public string ResultColumn { get; set; }
     }

@@ -18,7 +18,11 @@ namespace Ns.BpmOnline.Worker
             using (EventLog eventLog = new EventLog(logJournalName))
             {
                 eventLog.Source = _workerName;
-                eventLog.WriteEntry(message, EventLogEntryType.Information, 0, 1);
+                try
+                {
+                    eventLog.WriteEntry(message, EventLogEntryType.Information, 0, 1);
+                }
+                catch(Exception e) { }
             }
 
         }
