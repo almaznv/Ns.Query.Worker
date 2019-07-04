@@ -84,3 +84,26 @@ BEGIN
 END
 
 CREATE TABLE [dbo].[NsActionEvent]( [Id] [uniqueidentifier] NOT NULL, [CreatedOn] [datetime2](7) NOT NULL, [EventCode] [int] NOT NULL, [ClientId] [int] NULL, [DebtId] [int] NULL, [PristavDebtId] [int] NULL, [IsHandled] [bit] NOT NULL) ON [PRIMARY]
+
+CREATE TABLE [dbo].[NsActionRing](
+	[CreatedOn] [datetime2](7) NULL,
+	[QueryId] [uniqueidentifier] NULL,
+	[ClientId] [int] NULL,
+	[DebtId] [int] NULL,
+	[PristavDebtId] [int] NULL,
+	[TaskTypeId] [int] NULL,
+	[UserId] [nvarchar](50) NULL,
+	[DialingTypeId] [nvarchar](50) NULL,
+	[CallTargetId] [nvarchar](50) NULL,
+	[SenderId] [nvarchar](50) NULL,
+	[Line] [nvarchar](50) NULL,
+	[DayPart] [nvarchar](50) NULL,
+	[Comment] [nvarchar](250) NULL,
+	[CommentAction] [nvarchar](50) NULL,
+	[CommTypeId] [nvarchar](50) NULL,
+	[CommStateId] [nvarchar](50) NULL,
+	[RepeatQuantity] [int] NULL,
+	[StartDate] [date] NULL,
+	[StartTime] [time](7) NULL,
+	[ActivePeriodMax] [int] NULL
+) ON [PRIMARY]
