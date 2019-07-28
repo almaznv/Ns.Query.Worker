@@ -65,7 +65,7 @@ namespace Ns.BpmOnline.Worker.Executors
             SendAnswer(message);
         }
 
-        private void SendAnswerSuccess(NsReceivedQuery receivedQuery, int affectedRows, string resultTable, int executionTime, string answerResult)
+        private void SendAnswerSuccess(NsReceivedQuery receivedQuery, int affectedRows, string resultTable, int executionTime, string answerResult, string queryResult)
         {
             var answer = new NsQueryToSendAnswer()
             {
@@ -76,7 +76,10 @@ namespace Ns.BpmOnline.Worker.Executors
                 Status = "OK",
                 AffectedRows = affectedRows,
                 ResultTable = resultTable,
-                ExecutionTime = executionTime
+                ExecutionTime = executionTime,
+                IsNeedResult = receivedQuery.IsNeedResult,
+                QueryResultType = receivedQuery.QueryResultType,
+                QueryResult = queryResult
 
             };
             var message = JsonConvert.SerializeObject(answer);
@@ -99,14 +102,18 @@ namespace Ns.BpmOnline.Worker.Executors
                 var watch = System.Diagnostics.Stopwatch.StartNew();
 
                 ExecuteQuery(receivedQuery,
-                (int affected, string errText) =>
+                (int affected, string errText, string queryResult) =>
                 {
                     watch.Stop();
                     if (affected >= 0)
                     {
-                        SendAnswerSuccess(receivedQuery, affected, receivedQuery.ResultTable, (int)watch.ElapsedMilliseconds / 1000, String.Format("Success affected rows: {0}", affected.ToString()));
+                        int executionTime = (int) watch.ElapsedMilliseconds / 1000;
+                        string affectedRows = String.Format("Success affected rows: {0}", affected.ToString());
+
+                        SendAnswerSuccess(receivedQuery, affected, receivedQuery.ResultTable, executionTime, affectedRows, queryResult);
 
                         Logger.Log(String.Format("Sent answer to {0} query. Success affected rows: {1}", receivedQuery.ID, affected.ToString()));
+
                         tcs.SetResult(1);
                     }
                     else if (affected < 0)
@@ -121,25 +128,41 @@ namespace Ns.BpmOnline.Worker.Executors
             return tcs.Task;
         }
 
-        private void ExecuteQuery(NsReceivedQuery receivedQuery, Action<int, string> Callback)
+        private void ExecuteQuery(NsReceivedQuery receivedQuery, Action<int, string, string> Callback)
         {
             int count;
             string errText;
 
             try
             {
-                (count, errText) = ExecuteTspWithoutResult(receivedQuery.Query, receivedQuery.ID);
-                if (receivedQuery.IsNeedResult)
+                
+                string queryResult = String.Empty;
+
+                if (receivedQuery.IsNeedResult && receivedQuery.QueryResultType == "redis")
                 {
+                    (count, errText) = ExecuteTspWithoutResult(receivedQuery.Query, receivedQuery.ID);
                     InsertResultToRedis(receivedQuery);
                 }
+                else if (receivedQuery.IsNeedResult && receivedQuery.QueryResultType == "multiple")
+                {
+                    (count, errText, queryResult) = GetMultipleResult(receivedQuery);
+                }
+                else if (receivedQuery.IsNeedResult && receivedQuery.QueryResultType == "one")
+                {
+                    (count, errText, queryResult) = GetOneResult(receivedQuery);
+                }
+                else
+                {
+                    (count, errText) = ExecuteTspWithoutResult(receivedQuery.Query, receivedQuery.ID);
+                }
 
-                Callback(count, errText);
+
+                Callback(count, errText, queryResult);
 
             }
             catch (Exception e)
             {
-                Callback(-1, e.Message);
+                Callback(-1, e.Message, String.Empty);
             }
         }
 
@@ -151,10 +174,12 @@ namespace Ns.BpmOnline.Worker.Executors
             using (SqlConnection connection = new SqlConnection(sqlConnectionString))
             using (SqlCommand cmd = new SqlCommand("tsp_NsPerformQueryWithoutResult", connection))
             {
-                cmd.CommandType = CommandType.StoredProcedure;                cmd.Parameters.Add(new SqlParameter("@sqlQuery", sqlQuery));
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new SqlParameter("@sqlQuery", sqlQuery));
                 cmd.Parameters.Add(new SqlParameter("@queryId", Id));
 
-                SqlParameter countParam = new SqlParameter("@affected", SqlDbType.Int) { Direction = ParameterDirection.Output };                cmd.Parameters.Add(countParam);
+                SqlParameter countParam = new SqlParameter("@affected", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                cmd.Parameters.Add(countParam);
 
                 SqlParameter errTextParam = new SqlParameter("@err", SqlDbType.NVarChar) { Direction = ParameterDirection.Output, Size = 4000 };
                 cmd.Parameters.Add(errTextParam);
@@ -162,6 +187,7 @@ namespace Ns.BpmOnline.Worker.Executors
                 connection.Open();
 
                 cmd.CommandTimeout = 300;
+
                 cmd.ExecuteNonQuery();
 
                 returnValue = countParam.Value as int? ?? default(int);
@@ -172,6 +198,46 @@ namespace Ns.BpmOnline.Worker.Executors
             }
 
             return (returnValue, errText);
+        }
+
+        private (int, string, string) GetOneResult(NsReceivedQuery receivedQuery)
+        {
+            return (0, String.Empty, String.Empty);
+        }
+
+        private (int, string, string) GetMultipleResult(NsReceivedQuery receivedQuery)
+        {
+            var commandText = receivedQuery.Query;
+            int count = 0;
+
+            List<string> result = new List<string>();
+
+            SqlConnection conn = new SqlConnection(sqlConnectionString);
+            using (SqlCommand cmd = new SqlCommand(commandText, conn))
+            {
+                cmd.CommandType = CommandType.Text;
+                conn.Open();
+
+                using (SqlDataReader reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+                {
+                    count = reader.RecordsAffected;
+                    var cols = new List<string>();
+                    for (var j = 0; j < reader.FieldCount; j++)
+                    {
+                        cols.Add(reader.GetName(j));
+                    }
+
+                    while (reader.Read())
+                    {
+                        string jsonStr = JsonConvert.SerializeObject(SerializeRow(cols, reader), Formatting.Indented);
+                        result.Add(jsonStr);
+                    }
+                   
+                }
+
+            }
+
+            return (count, String.Empty, JsonConvert.SerializeObject(result));
         }
 
         private void InsertResultToRedis(NsReceivedQuery receivedQuery)
@@ -216,7 +282,13 @@ namespace Ns.BpmOnline.Worker.Executors
         {
             var result = new Dictionary<string, object>();
             foreach (var col in cols)
-                result.Add(col, reader[col]);
+            {
+                if (!result.ContainsKey(col))
+                {
+                    result.Add(col, reader[col]);
+                }
+            }
+
             return result;
         }
     }

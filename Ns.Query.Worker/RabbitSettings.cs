@@ -42,6 +42,7 @@ namespace Ns.BpmOnline.Worker
         public bool UseQueryInResult { get; set; }
         public string ResultTable { get; set; }
         public string ResultColumn { get; set; }
+        public string QueryResultType { get; set; }
     }
 
     public class NsQueryToSendAnswer
@@ -54,6 +55,9 @@ namespace Ns.BpmOnline.Worker
         public int AffectedRows { get; set; }
         public string ResultTable { get; set; }
         public int ExecutionTime { get; set; }
+        public bool IsNeedResult { get; set; }
+        public string QueryResultType { get; set; }
+        public string QueryResult { get; set; }
     }
 
 }
