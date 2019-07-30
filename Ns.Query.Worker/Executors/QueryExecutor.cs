@@ -79,7 +79,8 @@ namespace Ns.BpmOnline.Worker.Executors
                 ExecutionTime = executionTime,
                 IsNeedResult = receivedQuery.IsNeedResult,
                 QueryResultType = receivedQuery.QueryResultType,
-                QueryResult = queryResult
+                QueryResult = queryResult,
+                RequestParameters = receivedQuery.RequestParameters
 
             };
             var message = JsonConvert.SerializeObject(answer);
@@ -210,7 +211,7 @@ namespace Ns.BpmOnline.Worker.Executors
             var commandText = receivedQuery.Query;
             int count = 0;
 
-            List<string> result = new List<string>();
+            List<Dictionary<string, object>> result = new List<Dictionary<string, object>>();
 
             SqlConnection conn = new SqlConnection(sqlConnectionString);
             using (SqlCommand cmd = new SqlCommand(commandText, conn))
@@ -220,7 +221,6 @@ namespace Ns.BpmOnline.Worker.Executors
 
                 using (SqlDataReader reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
                 {
-                    count = reader.RecordsAffected;
                     var cols = new List<string>();
                     for (var j = 0; j < reader.FieldCount; j++)
                     {
@@ -229,8 +229,8 @@ namespace Ns.BpmOnline.Worker.Executors
 
                     while (reader.Read())
                     {
-                        string jsonStr = JsonConvert.SerializeObject(SerializeRow(cols, reader), Formatting.Indented);
-                        result.Add(jsonStr);
+                        result.Add(SerializeRow(cols, reader));
+                        count++;
                     }
                    
                 }

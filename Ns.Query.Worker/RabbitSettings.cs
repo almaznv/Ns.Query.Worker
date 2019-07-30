@@ -43,6 +43,7 @@ namespace Ns.BpmOnline.Worker
         public string ResultTable { get; set; }
         public string ResultColumn { get; set; }
         public string QueryResultType { get; set; }
+        public NsSqlRequestParameters RequestParameters { get; set; }
     }
 
     public class NsQueryToSendAnswer
@@ -58,6 +59,19 @@ namespace Ns.BpmOnline.Worker
         public bool IsNeedResult { get; set; }
         public string QueryResultType { get; set; }
         public string QueryResult { get; set; }
+        public NsSqlRequestParameters RequestParameters { get; set; }
+    }
+
+    public class NsSqlRequestParameters
+    {
+        public NsSqlRequestType Type { get; set; } = NsSqlRequestType.ContinueProcess;
+        public string Code { get; set; }
+    }
+
+    public enum NsSqlRequestType
+    {
+        ContinueProcess,
+        SaveParameters
     }
 
 }
