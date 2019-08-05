@@ -92,7 +92,6 @@ CREATE TABLE [dbo].[NsActionRing](
 	[DebtId] [int] NULL,
 	[PristavDebtId] [int] NULL,
 	[TaskTypeId] [int] NULL,
-	[UserId] [nvarchar](50) NULL,
 	[DialingTypeId] [nvarchar](50) NULL,
 	[CallTargetId] [nvarchar](50) NULL,
 	[SenderId] [nvarchar](50) NULL,
@@ -106,4 +105,90 @@ CREATE TABLE [dbo].[NsActionRing](
 	[StartDate] [date] NULL,
 	[StartTime] [time](7) NULL,
 	[ActivePeriodMax] [int] NULL
+) ON [PRIMARY]
+
+
+
+IF COL_LENGTH('NsActionTable', 'SendSmsSpeed') IS NULL
+BEGIN
+    ALTER TABLE NsActionTable
+    ADD SendSmsSpeed INT
+END
+
+IF COL_LENGTH('NsActionTable', 'UseTimeZone') IS NULL
+BEGIN
+    ALTER TABLE NsActionTable
+    ADD UseTimeZone bit
+END
+
+IF COL_LENGTH('NsActionTable', 'IsComplienceFZ') IS NULL
+BEGIN
+    ALTER TABLE NsActionTable
+    ADD IsComplienceFZ bit
+END
+
+IF COL_LENGTH('NsActionTable', 'IsSendSmsSuccess90days') IS NULL
+BEGIN
+    ALTER TABLE NsActionTable
+    ADD IsSendSmsSuccess90days bit
+END
+
+IF COL_LENGTH('NsActionTable', 'IsSendSmsPostponeNextDay') IS NULL
+BEGIN
+    ALTER TABLE NsActionTable
+    ADD IsSendSmsPostponeNextDay bit
+END
+
+ALTER TABLE "NsActionTable" DROP COLUMN "UserId";
+IF COL_LENGTH('NsActionTable', 'UserId') IS NULL
+BEGIN
+    ALTER TABLE NsActionTable
+    ADD UserId [uniqueidentifier]
+END
+
+
+IF COL_LENGTH('NsActionTable', 'UserName') IS NULL
+BEGIN
+    ALTER TABLE NsActionTable
+    ADD UserName [nvarchar](50)
+END
+
+ALTER TABLE "NsActionRing" DROP COLUMN "UserId";
+IF COL_LENGTH('NsActionRing', 'UserId') IS NULL
+BEGIN
+    ALTER TABLE NsActionRing
+    ADD UserId [uniqueidentifier]
+END
+
+
+IF COL_LENGTH('NsActionRing', 'UserName') IS NULL
+BEGIN
+    ALTER TABLE NsActionRing
+    ADD UserName [nvarchar](50)
+END
+
+CREATE TABLE [dbo].[NsActionIVM](
+	[CreatedOn] [datetime2](7) NULL,
+	[QueryId] [uniqueidentifier] NULL,
+	[ClientId] [int] NULL,
+	[DebtId] [int] NULL,
+	[PristavDebtId] [int] NULL,
+	[TaskTypeId] [int] NULL,
+	[DialingTypeId] [nvarchar](50) NULL,
+	[CallTargetId] [nvarchar](50) NULL,
+	[SenderId] [nvarchar](50) NULL,
+	[Line] [nvarchar](50) NULL,
+	[DayPart] [nvarchar](50) NULL,
+	[Comment] [nvarchar](250) NULL,
+	[CommentAction] [nvarchar](50) NULL,
+	[CommTypeId] [nvarchar](50) NULL,
+	[CommStateId] [nvarchar](50) NULL,
+	[RepeatQuantity] [int] NULL,
+	[StartDate] [date] NULL,
+	[StartTime] [time](7) NULL,
+	[ActivePeriodMax] [int] NULL,
+	[TemplateIVMId] [nvarchar](50) NULL,
+	[UseTransferCall] [bit] NULL,
+	[UserId] [uniqueidentifier] NULL,
+	[UserName] [nvarchar](250) NULL,
 ) ON [PRIMARY]
