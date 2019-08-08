@@ -109,35 +109,12 @@ CREATE TABLE [dbo].[NsActionRing](
 
 
 
-IF COL_LENGTH('NsActionTable', 'SendSmsSpeed') IS NULL
-BEGIN
-    ALTER TABLE NsActionTable
-    ADD SendSmsSpeed INT
-END
-
 IF COL_LENGTH('NsActionTable', 'UseTimeZone') IS NULL
 BEGIN
     ALTER TABLE NsActionTable
     ADD UseTimeZone bit
 END
 
-IF COL_LENGTH('NsActionTable', 'IsComplienceFZ') IS NULL
-BEGIN
-    ALTER TABLE NsActionTable
-    ADD IsComplienceFZ bit
-END
-
-IF COL_LENGTH('NsActionTable', 'IsSendSmsSuccess90days') IS NULL
-BEGIN
-    ALTER TABLE NsActionTable
-    ADD IsSendSmsSuccess90days bit
-END
-
-IF COL_LENGTH('NsActionTable', 'IsSendSmsPostponeNextDay') IS NULL
-BEGIN
-    ALTER TABLE NsActionTable
-    ADD IsSendSmsPostponeNextDay bit
-END
 
 ALTER TABLE "NsActionTable" DROP COLUMN "UserId";
 IF COL_LENGTH('NsActionTable', 'UserId') IS NULL

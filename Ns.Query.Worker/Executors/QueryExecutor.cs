@@ -150,7 +150,7 @@ namespace Ns.BpmOnline.Worker.Executors
                 }
                 else if (receivedQuery.IsNeedResult && receivedQuery.QueryResultType == "one")
                 {
-                    (count, errText, queryResult) = GetOneResult(receivedQuery);
+                    (count, errText, queryResult) = GetMultipleResult(receivedQuery);
                 }
                 else
                 {
