@@ -169,3 +169,10 @@ CREATE TABLE [dbo].[NsActionIVM](
 	[UserId] [uniqueidentifier] NULL,
 	[UserName] [nvarchar](250) NULL,
 ) ON [PRIMARY]
+
+
+IF COL_LENGTH('NsActionTable', 'IsCheckHLR') IS NULL
+BEGIN
+    ALTER TABLE NsActionTable
+    ADD IsCheckHLR bit
+END
