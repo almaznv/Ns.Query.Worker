@@ -176,3 +176,23 @@ BEGIN
     ALTER TABLE NsActionTable
     ADD IsCheckHLR bit
 END
+
+
+IF COL_LENGTH('NsActionRing', 'Comment') IS NOT NULL
+BEGIN
+	ALTER TABLE NsActionRing DROP COLUMN "Comment";
+END
+IF COL_LENGTH('NsActionRing', 'Descr') IS NULL
+BEGIN
+    ALTER TABLE NsActionRing ADD Descr [nvarchar](500)
+END
+
+
+IF COL_LENGTH('NsActionIVM', 'Comment') IS NOT NULL
+BEGIN
+	ALTER TABLE NsActionIVM DROP COLUMN "Comment";
+END
+IF COL_LENGTH('NsActionIVM', 'Descr') IS NULL
+BEGIN
+    ALTER TABLE NsActionIVM ADD Descr [nvarchar](500)
+END
