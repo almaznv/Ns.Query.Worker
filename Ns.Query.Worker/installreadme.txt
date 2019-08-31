@@ -196,3 +196,26 @@ IF COL_LENGTH('NsActionIVM', 'Descr') IS NULL
 BEGIN
     ALTER TABLE NsActionIVM ADD Descr [nvarchar](500)
 END
+
+
+CREATE TABLE [dbo].[NsActionRobot](
+	[CreatedOn] [datetime2](7) NULL,
+	[QueryId] [uniqueidentifier] NULL,
+	[ClientId] [int] NULL,
+	[DebtId] [int] NULL,
+	[PristavDebtId] [int] NULL,
+	[TaskTypeId] [int] NULL,
+	[TemplateRobotId] [nvarchar](50) NULL,
+	[CallTargetId] [nvarchar](50) NULL,
+	[SenderId] [nvarchar](50) NULL,
+	[Line] [nvarchar](50) NULL,
+	[Descr] [nvarchar](500) NULL,
+	[CommentAction] [nvarchar](50) NULL,
+	[CommTypeId] [nvarchar](50) NULL,
+	[CommStateId] [nvarchar](50) NULL,
+	[RepeatQuantity] [int] NULL,
+	[StartDate] [datetime] NULL,
+	[ActivePeriodMax] [int] NULL,
+	[UserId] [uniqueidentifier] NULL,
+	[UserName] [nvarchar](250) NULL,
+) ON [PRIMARY]
