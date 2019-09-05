@@ -219,3 +219,24 @@ CREATE TABLE [dbo].[NsActionRobot](
 	[UserId] [uniqueidentifier] NULL,
 	[UserName] [nvarchar](250) NULL,
 ) ON [PRIMARY]
+
+CREATE TABLE [dbo].[NsActionVisit](
+	[CreatedOn] [datetime2](7) NULL,
+	[QueryId] [uniqueidentifier] NULL,
+	[ClientId] [int] NULL,
+	[DebtId] [int] NULL,
+	[PristavDebtId] [int] NULL,
+	[TaskTypeId] [int] NULL,
+	[VisitTargetId] [nvarchar](50) NULL,
+
+	[SenderId] [nvarchar](50) NULL,
+	[Line] [nvarchar](50) NULL,
+	[Descr] [nvarchar](500) NULL,
+	[VisitAddressId] [nvarchar](50) NULL,
+
+	[RepeatQuantity] [int] NULL,
+	[StartDate] [datetime] NULL,
+	[ActivePeriodMax] [int] NULL,
+	[UserId] [uniqueidentifier] NULL,
+	[UserName] [nvarchar](250) NULL,
+) ON [PRIMARY]
