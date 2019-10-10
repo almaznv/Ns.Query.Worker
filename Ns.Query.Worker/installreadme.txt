@@ -240,3 +240,12 @@ CREATE TABLE [dbo].[NsActionVisit](
 	[UserId] [uniqueidentifier] NULL,
 	[UserName] [nvarchar](250) NULL,
 ) ON [PRIMARY]
+
+CREATE TABLE [dbo].[NsFilterFault](
+	[CreatedOn] [datetime2](7) NULL,
+	[QueryId] [uniqueidentifier] NULL,
+	[ClientId] [int] NULL,
+	[DebtId] [int] NULL,
+	[BPName] [nvarchar](500) NULL,
+	[Reason] [nvarchar](500) NULL
+) ON [PRIMARY]
