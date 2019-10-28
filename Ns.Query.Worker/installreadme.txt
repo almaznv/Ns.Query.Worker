@@ -606,10 +606,17 @@ FROM inserted
 
 CREATE VIEW [dbo].[NsVwActionLog]
 AS
-SELECT     NEWID() AS Id, nrs_am.dbo.NsActionLog.CreatedOn, nrs_am.dbo.NsActionLog.QueryId, nrs_am.dbo.NsActionLog.ClientId, nrs_am.dbo.NsActionLog.DebtId, dbo.NsAction.Name AS ActionType, nrs_am.dbo.NsActionLog.BPName, NULL AS CreatedBy, NULL AS ModifiedOn, NULL 
-                  AS ModifiedBy, 0 AS ProcessListeners
+SELECT     NEWID() AS Id, nrs_am.dbo.NsActionLog.CreatedOn, nrs_am.dbo.NsActionLog.QueryId, nrs_am.dbo.NsActionLog.ClientId, nrs_am.dbo.NsActionLog.DebtId, nrs_am.dbo.NsActionLog.ActionId, dbo.NsAction.Name AS ActionType, nrs_am.dbo.NsActionLog.BPName, NULL AS CreatedBy, NULL 
+                  AS ModifiedOn, NULL AS ModifiedBy, 0 AS ProcessListeners, CASE WHEN BackType IS NULL THEN N'Завершён' ELSE BackType END AS Status
 FROM        nrs_am.dbo.NsActionLog INNER JOIN
-                  dbo.NsAction ON dbo.NsAction.NrsId = nrs_am.dbo.NsActionLog.ActionId
+                  dbo.NsAction ON dbo.NsAction.NrsId = nrs_am.dbo.NsActionLog.ActionId LEFT OUTER JOIN
+                      (SELECT DISTINCT 
+                                         nrs_am.dbo.NsActionTable_Back_Actions.Action, nrs_am.dbo.NsActionTable_Back_Types.BackType, nrs_am.dbo.NsActionTable_Back.ClientId, nrs_am.dbo.NsActionTable_Back.DebtId, nrs_am.dbo.NsActionTable_Back.QueryId, 
+                                         nrs_am.dbo.NsActionTable_Back.ActionID
+                       FROM        nrs_am.dbo.NsActionTable_Back INNER JOIN
+                                         nrs_am.dbo.NsActionTable_Back_Actions ON nrs_am.dbo.NsActionTable_Back.ActionID = nrs_am.dbo.NsActionTable_Back_Actions.ID INNER JOIN
+                                         nrs_am.dbo.NsActionTable_Back_Types ON nrs_am.dbo.NsActionTable_Back.BackTypeID = nrs_am.dbo.NsActionTable_Back_Types.ID) AS temp1 ON temp1.QueryId = nrs_am.dbo.NsActionLog.QueryId AND temp1.ClientId = nrs_am.dbo.NsActionLog.ClientId AND 
+                  temp1.DebtId = nrs_am.dbo.NsActionLog.DebtId AND temp1.ActionID = nrs_am.dbo.NsActionLog.ActionId
 
 
 CREATE VIEW [dbo].[NsVwFilterFault]
@@ -619,3 +626,10 @@ FROM        nrs_am.dbo.NsFilterFault
 
 
 
+CREATE TABLE NsGroupsClients(
+	ClientId int NULL,
+	DebtId int NULL,
+	PristavDebtId int NULL, 
+	SenderId int NULL, 
+	Descr nvarchar(100),
+) ON [PRIMARY]
