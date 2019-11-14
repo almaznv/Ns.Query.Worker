@@ -53,6 +53,7 @@ namespace Ns.BpmOnline.Worker
         public string ResultColumn { get; set; }
         public string QueryResultType { get; set; }
         public NsSqlRequestParameters RequestParameters { get; set; }
+        public string KeyMask { get; set; }
     }
 
     public class NsQueryToSendAnswer
