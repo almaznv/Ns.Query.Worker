@@ -633,3 +633,11 @@ CREATE TABLE NsGroupsClients(
 	SenderId int NULL, 
 	Descr nvarchar(100),
 ) ON [PRIMARY]
+
+
+
+CREATE VIEW NsVwBlock
+AS
+SELECT s.Code as TempId, s.Name as Name, NEWID() as Id
+FROM [NSV].[dbo].[NsLine] s
+
