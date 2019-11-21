@@ -9,6 +9,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Threading;
 using Sider;
+using System.Text.RegularExpressions;
 
 namespace Ns.BpmOnline.Worker.Executors
 {
@@ -152,11 +153,15 @@ namespace Ns.BpmOnline.Worker.Executors
                 {
                     (count, errText, queryResult) = GetMultipleResult(receivedQuery);
                 }
+                else if (receivedQuery.IsNeedResult && receivedQuery.QueryResultType == "redis-contacts")
+                {
+                    (count, errText) = ExecuteTspWithoutResult(receivedQuery.Query, receivedQuery.ID);
+                    InsertResultStringToRedis(receivedQuery);
+                }
                 else
                 {
                     (count, errText) = ExecuteTspWithoutResult(receivedQuery.Query, receivedQuery.ID);
                 }
-
 
                 Callback(count, errText, queryResult);
 
@@ -270,12 +275,105 @@ namespace Ns.BpmOnline.Worker.Executors
                         string jsonStr = JsonConvert.SerializeObject(SerializeRow(cols, reader), Formatting.Indented);
                         client.LPush(key, jsonStr);
                     }
+
+                    var span = new TimeSpan(24, 1, 1);
+                    client.Expire(key, span);
                     client.Exec();
                     client.Dispose();
                 }
 
             }
 
+        }
+
+        private void InsertResultStringToRedis(NsReceivedQuery receivedQuery)
+        {
+            var commandText = receivedQuery.Query;
+
+            SqlConnection conn = new SqlConnection(sqlConnectionString);
+            using (SqlCommand cmd = new SqlCommand(commandText, conn))
+            {
+                cmd.CommandType = CommandType.Text;
+                conn.Open();
+
+                using (SqlDataReader reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+                {
+                    var cols = new List<string>();
+                    for (var j = 0; j < reader.FieldCount; j++)
+                    {
+                        cols.Add(reader.GetName(j));
+                    }
+
+                    var client = NsRedisHelper.getRedisClient();
+                    var key = receivedQuery.KeyMask.ToString();
+
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            Regex regex = new Regex(@"(\{.+?\})");
+                            MatchCollection matches = regex.Matches(key);
+
+                            string redisKey = key; 
+
+                            if (matches.Count != 0)
+                            {
+                                foreach (Match match in matches)
+                                {
+                                    redisKey = redisKey.Replace(match.Value, 
+                                        reader.GetValue(
+                                            reader.GetOrdinal(match.Value.Trim(new char[] { '{', '}' }))
+                                            ).ToString()
+                                        );
+                                }
+                            }
+
+                            string redisValue = "";
+                            redisValue += "{";
+                            for (int i = 0; i < cols.Count; i++)
+                            {
+                                string elementOfValue =  '"' + cols[i] + '"' + ":" + '"' + reader.GetValue(i).ToString() + '"';
+                                redisValue += elementOfValue;
+                                if (i != cols.Count - 1)
+                                {
+                                    redisValue += ",";
+                                }
+                            }
+                            redisValue += "},";
+
+                            string existingValue = client.Get(redisKey);
+                            if (existingValue != null)
+                            {
+                                existingValue = existingValue.Trim(new char[] { '[', ']' });
+                                redisValue += existingValue;
+                                redisValue = "[" + redisValue + "]";
+                                if (!client.Set(redisKey, redisValue))
+                                {
+                                    throw new Exception($"Execution canceled. Redis cannot set {redisKey}{redisValue}.");
+                                } else
+                                {
+                                    var span = new TimeSpan(24, 1, 1);
+                                    client.Expire(redisKey, span);
+                                }
+                            }
+                            else
+                            {
+                                redisValue = "[" + redisValue + "]";
+                                if (!client.Set(redisKey, redisValue))
+                                {
+                                    throw new Exception($"Execution canceled. Redis cannot set {redisKey}{redisValue}.");
+                                }
+                                else
+                                {
+                                    var span = new TimeSpan(24, 1, 1);
+                                    client.Expire(redisKey, span);
+                                }
+                            }
+                        }
+                    }
+                    client.Dispose();
+                }
+            }
         }
 
         private Dictionary<string, object> SerializeRow(IEnumerable<string> cols, SqlDataReader reader)
